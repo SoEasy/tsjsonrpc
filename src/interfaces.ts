@@ -30,9 +30,9 @@ export interface IJsonRpcResponse {
   jsonrpc: string;
   // TODO мб дженерики? Но боюсь в них утонуть
   // tslint:disable-next-line
-  result: any;
+  result?: any;
   // tslint:disable-next-line
-  error: any;
+  error?: any;
 }
 
 export interface IHttpClient {

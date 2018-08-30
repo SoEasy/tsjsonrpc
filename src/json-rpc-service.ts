@@ -37,13 +37,13 @@ export class JsonRpcService {
 
   static configure(config: IJsonRpcServiceConfig): void {
     this.httpClient = config.httpClient;
-    this.apiServerUrl = config.apiServerUrl ? stripSlash(config.apiServerUrl) : undefined;
+    this.apiServerUrl = config.apiServerUrl ? stripSlash(config.apiServerUrl) : void 0;
   }
 
   // tslint:disable-next-line
   static make(config: IJsonRpcRepositoryConfig): (target: any) => void {
     // tslint:disable-next-line
-    return function(target: any): void {
+    return (target: any): void => {
       // tslint:disable-next-line
       target.execute = function(method: string, data: object) {
         const { httpClient, makeUrl } = JsonRpcService;

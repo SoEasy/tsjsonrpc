@@ -1,6 +1,6 @@
 {
   "name": "tsjsonrpc",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "TypeScript library with decorators for JSONRPC protocol. Powered by typescript-lib-starter",
   "main": "./bundles/index.umd.js",
   "module": "./esm5/index.js",

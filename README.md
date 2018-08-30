@@ -1,236 +1,203 @@
-# Typescript lib starter
+# tsjsonrpc
+TypeScript-библиотека декораторов для абстрагирования от уровней транспорта и преобразования данных
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/Hotell/typescript-lib-starter.svg)](https://greenkeeper.io/)
+## Концепция
+JSONRPC - протокол для обмена данными между клиентом и сервером. Имеет строгий формат тела сообщений и правила 
+сетевого доступа.
 
-[![Build Status](https://travis-ci.org/Hotell/typescript-lib-starter.svg?branch=master)](https://travis-ci.org/Hotell/typescript-lib-starter)
-[![NPM version](https://img.shields.io/npm/v/%40martin_hotell%2Ftypescript-lib-starter.svg)](https://www.npmjs.com/package/@martin_hotell/typescript-lib-starter)
-![Downloads](https://img.shields.io/npm/dm/@martin_hotell/typescript-lib-starter.svg)
-[![Standard Version](https://img.shields.io/badge/release-standard%20version-brightgreen.svg)](https://github.com/conventional-changelog/standard-version)
-[![styled with prettier](https://img.shields.io/badge/styled_with-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
-[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
+Для абстрагирования от лишней мета-информации тела сообщения и чтобы избежать дублирования кода транспортного уровня 
+написана эта библиотека, реализующая декларативный подход. Условно это можно назвать маппингом наших фронтовых 
+методов на методы удаленного сервера.
 
-This npm library starter:
+Библиотека не зависит от используемого(или не используемого) в вашем проекте фреймворка.
 
-- creates package for both Node and Browser
-- build will creates 4 standard "package" formats:
-  - `umd` 👉 UMD bundle for Node and Browser
-    > `main` field in package.json
-  - `esm5` 👉 transpiled files to ES5 + es2015 modules for tree shaking
-    > `module` field in package.json
-  - `esm2015` 👉 raw javascript files transpiled from typescript to latest ES standard ( es2018 )
-    > `es2015` field in package.json
-    >
-    > this is useful if you wanna transpile everything or just wanna ship untranspiled esNext code for evergreen browsers)
-  - `fesm` 👉 experimental bundle type introduced by Angular team (TL;DR: it's an es2015 flattened bundle, like UMD but with latest ECMAscript and JS modules)
-- type definitions are automatically generated and shipped with your package
-  - > `types` field in package.json
-- `sideEffects` 👉 [support proper tree-shaking](https://webpack.js.org/guides/tree-shaking/#mark-the-file-as-side-effect-free) for whole library ( Webpack >= 4). Turn this off or adjust as needed if your modules are not pure!
+## Мотивация
+Ниже представлен совсем сырой кусок кода, который общался с jsonrpc-сервером без всяких оберток  
+```typescript
+interface IJsonRpcResponse<T> {
+  id: string;
+  jsonrpc: string;
+  data?: T;
+  error?: object;
+}
 
-## Start coding in 4 steps !
+function executeRemoteMethod<T>(
+  serverUrl: string, endpoint: string, method: string, payload?: object
+): Promise<T> {
+  const url = `${serverUrl}/${endpoint}`;
+  const request = {
+    id: Math.random().toString(),
+    jsonrpc: '2.0',
+    method
+  };
+  if (payload) {
+    request.params = payload;
+  }
+  
+  return axios.post(url, request).catch(
+    err => {
+      // Обработать и выплюнуть универсальный объект ошибки с информацией о проблеме сети
+    }
+  ).then((response: IJsonRpcResponse<T>) => {
+    if (response.data) {
+      // Обработать и отдать сырые данные из ответа
+    } else {
+      // Обработать и выплюнуть ошибку из ответа
+    }
+  });
+}
 
-1.  `git clone https://github.com/Hotell/typescript-lib-starter <your-libary-folder-name> && cd $_`
+executeRemoteMethod('http://api.com', 'services/auth', 'login', {login: 12345}).catch(err => {
+  // Обработат универсальную ошибку сети или бизнес-логики
+}).then(response => {
+  // Работать с данным
+})
+```
+Что не нравится:
+- из проекта в проект тащить этот код + еще всякие интерфейсы
+- императивный стиль
+- можно совершенствовать код дальше и порождать новые абстракции, но нет универсальности
+- использование конкретного транспорта
 
-2.  `rm -rf .git && git init`
+Что хочется:
+- универсальную библиотеку со всеми нужными интерфейсами
+- чтобы она была конфигурируема
+- декларативный стиль
+- абстрагироваться от конкретного транспорта
 
-3.  in `package.json` reset following fields:
+## Реализация
+Библиотека предоставляет набор интерфейсов над протоколом jsonrpc, декоратор для сервера jsonrpc-службы и фабрику 
+кастомизируемых декораторов методов, которую каждый потребитель будет использовать чтобы получить нужный именно ему 
+декоратор метода.
 
-```diff
-{
-- "name": "@next-gen/typescript-lib-starter",
-+ "name": "{yourLibraryPackageName}",
-- "version": "1.7.0",
-+ "version": "1.0.0",
-- "description": "TypeScript library setup for multiple compilation targets using tsc and webpack",
-+ "description": "What is your library all about...",
-- "author": "Martin Hochel",
-+ "author": "{yourName}",
-- "license": "MIT",
-+ "license": "{yourLicense}",
-  "repository": {
-    "type": "git",
--   "url": "https://www.github.com/Hotell/typescript-lib-starter"
-+   "url": "https://www.github.com/{yourAccountName}/{yourLibraryPackageName}"
+Почему фабрика декораторов? Невозможно предусмотреть потребности каждого пользователя библиотеки в плане 
+использования декораторов и вызова удаленных методов. Каждому может потребоваться специфичное преобразование объектов
+ запроса, специфичное и конфигурируемое преобразование объекта ответа.
+ 
+Библиотеке необходимо подсунуть экземпляр транспорта, который представляет из себя адаптер над вашим транспортным 
+решением(axios, fetch, angular-http, etc)
+
+## how to use
+#### 1
+В первую очередь необходимо реализовать класс-адаптер для транспорта и предоставить его:
+```typescript
+import { IHttpClient } from 'tsjsonrpc';
+
+class HttpClientApater implements IHttpClient {
+  // Каким угодно способом закиньте ваш класс транспорта в адаптер
+  // В данном случае - внедрение через конструктор
+  constructor(private httpService: HttpClient) {}
+
+  // Обязательный и единственный метод, который будет использоваться библиотекой внутри
+  // Сигнатура проста - конечный готовый урл, на который пойдет запрос и тело запроса
+  post(url: string, params: object): Promise<any> {
+    // Здесь реализуйте вызов вашего транспорта с передачей ему урла и данных
+    // В нашем случае здесь ангуляр и его HttpService
+    return this.httpService.post(url, params).toPromise();
   }
 }
 ```
+Урл библиотека формирует по следующей схеме: `${apiServerUrl}/${service}/${endpoint}`
 
-4.  Install all dependencies `yarn install`
+#### 2
+После этого нужно сконфигурировать библиотеку:
+```typescript
+import { JsonRpcService } from 'tsjsonrpc';
 
-Happy coding ! 🖖
-
-## Consumption of published library:
-
-1.  install it 🤖
-
-```sh
-yarn add my-new-library
-# OR
-npm install my-new-library
+JsonRpcService.configure({
+  apiServerUrl: 'https://your-domain.com/api/v1',
+  httpClient: new HttpClientAdapter(httpClient)
+});
 ```
 
-1.  use it 💪
+#### 3
+Подход маппинга заключается в создании класса для общения с конкретным эндпоинтом.
+```typescript
+import { JsonRpcService } from 'tsjsonrpc';
+import { JsonRpcMethod } from './../utils/jsonrpc';
 
-### Webpack
-
-> #### NOTE:
->
-> Don't forget to turn off ES modules transpilation to enable tree-shaking!
->
-> - babel: `{"modules": false}`
-> - typescript: `{"module": "esnext"}`
-
-```ts
-// main.ts or main.js
-import { Greeter } from 'my-new-library'
-
-const mountPoint = document.getElementById('app')
-const App = () => {
-  const greeter = new Greeter('Stranger')
-  return `<h1>${greeter.greet()}</h1>`
+@JsonRpcService.make({ service: 'services/auth', endpoint: 'private' })
+class AuthTransportService {
+  @JsonRpcMethod({ method: 'login' })
+  login(request: LoginRequest): Promise<LoginResponse> {
+    return null;
+  }
 }
-const render = (Root: Function, where: HTMLElement) => {
-  where.innerHTML = Root()
+```
+Описанный класс вызов каждого метода, обернутого декоратором, будет проксировать в транспорт, гонять на сервер и делать 
+всякие дела.
+
+В данном коде появляется несколько новых вещей, которые реализовывать в ридми не буду, но их стоит объяснить:
+- @JsonRpcMethod - декоратор, который вы получите используя фабрику декораторов из библиотеки на следующем шаге
+- LoginRequest - модель запроса, которую сможет преобразовать декоратор в сырые данные для отправки по сети
+- LoginResponse - интерфейс данных ответа от сервера, пришедших в поле data
+
+#### 4
+Предпоследнее и самое хардкорное - создать ваш уникальный декортоар метода и настроить ему пре- и пост-процессинг 
+запросов. Выше описанный LoginResponse может быть не только интерфейсом сырых данных, но и любым вашем типом, к 
+которому вы можете преобразовать данные ответа в постпроцессоре.
+```typescript
+import { JsonRpcService } from 'tsjsonrpc';
+
+export const JsonRpcMethod = JsonRpcService.makeMethodDecorator(
+  (request?: ISerializable) => request ? request.toServer() : void 0,
+  (response: any, payload: any) => {
+    // Здесь можно что-нибудь сделать с объектом response, который вернул ваш адаптер из метода post
+    // payload - хитрая штука - это все поля из конфига, переданного в декоратор, но без поля method.
+  }
+)
+```
+
+использование декоратора видно выше, но помимо метода в конфиг можно передать все что угодно, и оно провалится в 
+payload процессора ответа.
+
+Например
+```typescript
+@JsonRpcMethod({ method: 'login', responseModel: AwesomeModelClass, someOtherData: 123 })
+```
+Постпроцессор в аргумент payload получит объект `{ responseModel, someOtherData }`. В нашем случае используется как 
+раз responseModel, в которую кладется конструктор класса со статичным свойством fromServer, превращающий сырые данные
+ в нашу богатую модель.
+
+```typescript
+@JsonRpcMethod({ method: 'login', responseModel: LoginResponse })
+login(): Promise<LoginResponse> {} // На выходе в промисе будут не сырые данные, а богатая модель
+```
+ 
+## Боевой пример получения декоратора
+```typescript
+
+interface IResponsePostprocessorPayload {
+  response?: { fromServer(rawData: object): any };
 }
 
-render(App, mountPoint)
-```
-
-```html
-<!-- index.htm -->
-<html>
-  <head>
-    <script src="bundle.js" async></script>
-  </head>
-  <body>
-    <div id="app"></div>
-  </body>
-</html>
-```
-
-### UMD/ES2015 module aware browsers ( no bundler )
-
-```html
-<html>
-  <head>
-    <script type="module">
-      import {Greeter} from './node_modules/my-lib/esm2015/index.js'
-
-      const App = () => {
-        const greeter = new Greeter('Stranger');
-        return `<h1>${greeter.greet()}</h1>`
+export const JsonRpcMethod = JsonRpcService.makeMethodDecorator<
+  ISerializable,
+  IResponsePostprocessorPayload
+>(
+  (requestObject?: ISerializable) => requestObject ? requestObject.toServer() : null,
+  (responseObject: Promise<IJsonRpcResponse>, payload: IResponsePostprocessorPayload) => {
+    return responseObject.catch(httpError => {
+      throw JsonRpcError.makeHttpError(httpError.status, httpError.statusText);
+    }).then(res => {
+      if (res.error) {
+        throw JsonRpcError.makeRpcError(res.error);
+      } else {
+        return payload.response ? payload.response.fromServer(res.result) : void 0;
       }
-      const render = (Root, where) => {
-        where.innerHTML = Root();
-      }
+    });
+  }
+);
 
-      render(App, mountPoint);
-    </script>
-    <script nomodule src="node_modules/my-lib/bundles/my-new-library.umd.min.js"></script>
-    <script nomodule async>
-        var Greeter = MyLib.Greeter;
+``` 
+ 
+## API
 
-        var App = function() {
-          var greeter = new Greeter('Stranger');
-          return '<h1>'+greeter.greet()+'</h1>'
-        }
-        var render = function(Root, where) {
-          where.innerHTML = Root();
-        }
+### JsonRpcService.make(config: { service: string, endpoint: string })
+Декоратор для класса, в котором будут удаленные методы
 
-        render(App, mountPoint);
-    </script>
-  </head>
-  <body>
-    <div id="app"></div>
-  </body>
-</html>
-```
+### JsonRpcService.config(config: { apiServerUrl: string, httpClient: { post(url: string, data: object): any } })
+Конфиг, который надо вызвать на старте приложения
 
-## Publish your library
-
-> #### NOTE:
->
-> you have to create npm account and register token on your machine
-> 👉 `npm adduser`
->
-> If you are using scope ( you definitely should 👌) don't forget to [`--scope`](https://docs.npmjs.com/cli/adduser#scope)
-
-Execute `yarn release` which will handle following tasks:
-
-- bump package version and git tag
-- update/(create if it doesn't exist) CHANGELOG.md
-- push to github master branch + push tags
-- publish build packages to npm
-
-> **NOTE:**
->
-> all package files are gonna be within `/dist` folder from where `npm publish` will be executed
-
-> releases are handled by awesome [standard-version](https://github.com/conventional-changelog/standard-version)
-
-### Initial Release (without bumping package.json version):
-
-`yarn release --first-release`
-
-### Pre-release
-
-- To get from `1.1.2` to `1.1.2-0`:
-
-`yarn release --prerelease`
-
-- **Alpha**: To get from `1.1.2` to `1.1.2-alpha.0`:
-
-`yarn release --prerelease alpha`
-
-- **Beta**: To get from `1.1.2` to `1.1.2-beta.0`:
-
-`yarn release --prerelease beta`
-
-### Dry run mode
-
-See what commands would be run, without committing to git or updating files
-
-`yarn release --dry-run`
-
-## Check what files are gonna be published to npm
-
-- `cd dist && yarn pack` OR `yarn release:preflight` which will create a tarball with everything that would get published to NPM
-
-## Check size of your published NPM bundle
-
-`yarn size`
-
-## Format and fix lint errors
-
-`yarn ts:style:fix`
-
-## Generate documentation
-
-`yarn docs`
-
-## Commit ( via commitizen )
-
-- this is preferred way how to create conventional-changelog valid commits
-- if you prefer your custom tool we provide a commit hook linter which will error out, it you provide invalid commit message
-- if you are in rush and just wanna skip commit message validation just prefix your message with `WIP: something done` ( if you do this please squash your work when you're done with proper commit message so standard-version can create Changelog and bump version of your library appropriately )
-
-`yarn commit` - will invoke [commitizen CLI](https://github.com/commitizen/cz-cli)
-
-### Troubleshooting
-
-#### dynamic `import()`
-
-This starter uses latest **TypeScript >=2.9** which has support for lazy loading chunks/modules via `import()` and also definition acquisition via [`import('../path-to-module').TypeFoo`](http://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-9.html#import-types)
-
-Before TS 2.9, it wasn't possible to properly generate ambient definitions if you used dynamic `import()`. This works now as expected without any hacks ❤️ !
-
----
-
-> ### Before TS 2.9
->
-> Please note that if you wanna use that feature, compiler will complain because declaration generation is turned on, and currently TS can't handle type generation with types that will be loaded in the future ( lazily )
->
-> **How to solve this:**
->
-> - turn of type checking and don't generate types for that lazy import: `import('./components/button') as any`
-> - or you can use this [temporary workaround](https://github.com/Microsoft/TypeScript/issues/16603#issuecomment-310208259)
+### JsonRpcService.makeMethodDecorator<TRequest, TPayload>(requestProcessor: (request: TRequest) => any, responseProcessor(response: any, payload: TPayload) => any )
+Фабрика получения декоратора метода
