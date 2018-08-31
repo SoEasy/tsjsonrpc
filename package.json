@@ -1,6 +1,6 @@
 {
   "name": "tsjsonrpc",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "TypeScript library with decorators for JSONRPC protocol. Powered by typescript-lib-starter",
   "main": "./bundles/index.umd.js",
   "module": "./esm5/index.js",
@@ -9,7 +9,7 @@
   "sideEffects": false,
   "repository": {
     "type": "git",
-    "url": "https://www.github.com/Hotell/typescript-lib-starter"
+    "url": "https://github.com/SoEasy/tsjsonrpc"
   },
   "author": "Vladimir Sannikov",
   "license": "MIT",

@@ -1,8 +1,3 @@
-export interface IJsonRpcRepositoryConfig {
-  endpoint: string;
-  service: string;
-}
-
 export type IJsonRpcMethodConfigPayload<TMethodConfigPayload> = {
   [key in keyof TMethodConfigPayload]: TMethodConfigPayload[key];
 }

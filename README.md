@@ -83,7 +83,7 @@ executeRemoteMethod('http://api.com', 'services/auth', 'login', {login: 12345}).
 ```typescript
 import { IHttpClient } from 'tsjsonrpc';
 
-class HttpClientApater implements IHttpClient {
+class HttpClientAdapter implements IHttpClient {
   // Каким угодно способом закиньте ваш класс транспорта в адаптер
   // В данном случае - внедрение через конструктор
   constructor(private httpService: HttpClient) {}
@@ -116,7 +116,7 @@ JsonRpcService.configure({
 import { JsonRpcService } from 'tsjsonrpc';
 import { JsonRpcMethod } from './../utils/jsonrpc';
 
-@JsonRpcService.make({ service: 'services/auth', endpoint: 'private' })
+@JsonRpcService.make('services/auth/private')
 class AuthTransportService {
   @JsonRpcMethod({ method: 'login' })
   login(request: LoginRequest): Promise<LoginResponse> {
@@ -193,7 +193,7 @@ export const JsonRpcMethod = JsonRpcService.makeMethodDecorator<
  
 ## API
 
-### JsonRpcService.make(config: { service: string, endpoint: string })
+### JsonRpcService.make(endpoint?: string)
 Декоратор для класса, в котором будут удаленные методы
 
 ### JsonRpcService.config(config: { apiServerUrl: string, httpClient: { post(url: string, data: object): any } })

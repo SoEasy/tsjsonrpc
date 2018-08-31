@@ -1,7 +1,6 @@
 import {
   IHttpClient,
   IJsonRpcMethodConfig,
-  IJsonRpcRepositoryConfig,
   IJsonRpcRequest,
   IJsonRpcServiceConfig
 } from "./interfaces";
@@ -25,13 +24,12 @@ export class JsonRpcService {
     return retVal;
   }
 
-  private static makeUrl(service: string, endpoint: string): string {
+  private static makeUrl(endpoint?: string): string {
     const { apiServerUrl } = JsonRpcService;
 
     return [
       apiServerUrl,
-      stripSlash(service),
-      stripSlash(endpoint)
+      endpoint ? stripSlash(endpoint) : void 0
     ].filter(v => !!v).join('/');
   }
 
@@ -41,13 +39,13 @@ export class JsonRpcService {
   }
 
   // tslint:disable-next-line
-  static make(config: IJsonRpcRepositoryConfig): (target: any) => void {
+  static make(endpoint?: string): (target: any) => void {
     // tslint:disable-next-line
     return (target: any): void => {
       // tslint:disable-next-line
       target.execute = function(method: string, data: object) {
         const { httpClient, makeUrl } = JsonRpcService;
-        const apiUrl: string = makeUrl(config.service, config.endpoint);
+        const apiUrl: string = makeUrl(endpoint);
 
         return httpClient.post(apiUrl, JsonRpcService.getParamsObj(method, data));
       };
