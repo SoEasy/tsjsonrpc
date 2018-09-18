@@ -1,2 +1,2 @@
 export * from './interfaces';
-export { JsonRpcService } from './json-rpc-service';
+export { TSJsonRpc } from './ts-json-rpc';

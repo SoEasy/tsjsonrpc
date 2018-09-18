@@ -100,26 +100,27 @@ class HttpClientAdapter implements IHttpClient {
 Урл библиотека формирует по следующей схеме: `${apiServerUrl}/${service}/${endpoint}`
 
 #### 2
-После этого нужно сконфигурировать библиотеку:
+После этого нужно сконфигурировать декоратор, которым будет оборачиваться ваши классы:
 ```typescript
-import { JsonRpcService } from 'tsjsonrpc';
+import { TSJsonRpc } from 'tsjsonrpc';
 
-JsonRpcService.configure({
+const JsonRpcService = TSJsonRpc.makeClassDecorator({
   apiServerUrl: 'https://your-domain.com/api/v1',
   httpClient: new HttpClientAdapter(httpClient)
 });
 ```
+Декоратор принимает эндпоинт, на котором находится jsonrpc-сервер
 
 #### 3
 Подход маппинга заключается в создании класса для общения с конкретным эндпоинтом.
 ```typescript
-import { JsonRpcService } from 'tsjsonrpc';
-import { JsonRpcMethod } from './../utils/jsonrpc';
+// JsonRpcMethod еще не описан, о нем - в следующем шаге
+import { JsonRpcService, JsonRpcMethod } from './../utils/jsonrpc';
 
-@JsonRpcService.make('services/auth/private')
+@JsonRpcService('services/auth/private')
 class AuthTransportService {
   @JsonRpcMethod({ method: 'login' })
-  login(request: LoginRequest): Promise<LoginResponse> {
+  login(request: LoginRequest, options?: any): Promise<LoginResponse> {
     return null;
   }
 }
@@ -129,17 +130,18 @@ class AuthTransportService {
 
 В данном коде появляется несколько новых вещей, которые реализовывать в ридми не буду, но их стоит объяснить:
 - @JsonRpcMethod - декоратор, который вы получите используя фабрику декораторов из библиотеки на следующем шаге
-- LoginRequest - модель запроса, которую сможет преобразовать декоратор в сырые данные для отправки по сети
-- LoginResponse - интерфейс данных ответа от сервера, пришедших в поле data
+- LoginRequest - модель запроса, которую сможет преобразовать декоратор в сырые данные для отправки по сети. 
+Конфигурируете его вы
+- LoginResponse - интерфейс данных ответа от сервера, пришедших в поле data. Конфигурируете его вы
 
 #### 4
 Предпоследнее и самое хардкорное - создать ваш уникальный декортоар метода и настроить ему пре- и пост-процессинг 
 запросов. Выше описанный LoginResponse может быть не только интерфейсом сырых данных, но и любым вашем типом, к 
 которому вы можете преобразовать данные ответа в постпроцессоре.
 ```typescript
-import { JsonRpcService } from 'tsjsonrpc';
+import { TSJsonRpc } from 'tsjsonrpc';
 
-export const JsonRpcMethod = JsonRpcService.makeMethodDecorator(
+export const JsonRpcMethod = TSJsonRpc.makeMethodDecorator(
   (request?: ISerializable) => request ? request.toServer() : void 0,
   (response: any, payload: any) => {
     // Здесь можно что-нибудь сделать с объектом response, который вернул ваш адаптер из метода post
@@ -168,10 +170,10 @@ login(): Promise<LoginResponse> {} // На выходе в промисе буд
 ```typescript
 
 interface IResponsePostprocessorPayload {
-  response?: { fromServer(rawData: object): any };
+  responseModel?: { fromServer(rawData: object): any };
 }
 
-export const JsonRpcMethod = JsonRpcService.makeMethodDecorator<
+export const JsonRpcMethod = TSJsonRpc.makeMethodDecorator<
   ISerializable,
   IResponsePostprocessorPayload
 >(
@@ -183,7 +185,7 @@ export const JsonRpcMethod = JsonRpcService.makeMethodDecorator<
       if (res.error) {
         throw JsonRpcError.makeRpcError(res.error);
       } else {
-        return payload.response ? payload.response.fromServer(res.result) : void 0;
+        return payload.responseModel ? payload.responseModel.fromServer(res.result) : void 0;
       }
     });
   }
@@ -193,11 +195,8 @@ export const JsonRpcMethod = JsonRpcService.makeMethodDecorator<
  
 ## API
 
-### JsonRpcService.make(endpoint?: string)
+### TSJsonRpc.makeClassDecorator(config: { apiServerUrl: string, httpClient: { post(url: string, data: object): any } })
 Декоратор для класса, в котором будут удаленные методы
-
-### JsonRpcService.config(config: { apiServerUrl: string, httpClient: { post(url: string, data: object): any } })
-Конфиг, который надо вызвать на старте приложения
 
 ### JsonRpcService.makeMethodDecorator<TRequest, TPayload>(requestProcessor: (request: TRequest) => any, responseProcessor(response: any, payload: TPayload) => any )
 Фабрика получения декоратора метода
