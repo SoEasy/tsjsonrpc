@@ -4,9 +4,7 @@ import {
   IJsonRpcServiceConfig
 } from "./interfaces";
 import { guid } from './utils/guid';
-import { stripSlash } from './utils/strip-slash';
-
-const executeSymbol = Symbol('execute');
+import { stripSlash, stripStarterSlash, stripEndingSlash } from './utils/strip-slash';
 
 export class TSJsonRpc {
   private static getParamsObj(method: string, params?: object): IJsonRpcRequest {
@@ -24,8 +22,8 @@ export class TSJsonRpc {
 
   private static makeUrl(apiServerUrl?: string, endpoint?: string): string {
     return [
-      apiServerUrl ? stripSlash(apiServerUrl) : void 0,
-      endpoint ? stripSlash(endpoint) : void 0
+      apiServerUrl ? stripEndingSlash(apiServerUrl) : void 0,
+      endpoint ? stripStarterSlash(endpoint) : void 0
     ].filter(v => !!v).join('/');
   }
 
@@ -35,7 +33,7 @@ export class TSJsonRpc {
     return (endpoint?: string): any => {
       return (target: any): void => {
         // tslint:disable-next-line
-        target[executeSymbol] = function(method: string, data: object) {
+        target['execute'] = function(method: string, data: object) {
           const { makeUrl } = TSJsonRpc;
           const apiUrl: string = makeUrl(apiServerUrl, endpoint);
 
@@ -57,7 +55,8 @@ export class TSJsonRpc {
         // tslint:disable-next-line
         descriptor.value = function (request: TRequest) {
           return responsePostprocessor(
-            targetConstructor[executeSymbol](config.method, requestPreprocessor(request)),
+            // tslint:disable-next-line
+            targetConstructor['execute'](config.method, requestPreprocessor(request)),
             config
           );
         };
