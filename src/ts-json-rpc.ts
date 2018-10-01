@@ -1,10 +1,11 @@
 import {
+  IHttpClient,
   IJsonRpcMethodConfig,
   IJsonRpcRequest,
   IJsonRpcServiceConfig
 } from "./interfaces";
 import { guid } from './utils/guid';
-import { stripSlash, stripStarterSlash, stripEndingSlash } from './utils/strip-slash';
+import { stripEndingSlash, stripStarterSlash } from './utils/strip-slash';
 
 export class TSJsonRpc {
   private static getParamsObj(method: string, params?: object): IJsonRpcRequest {
@@ -45,7 +46,8 @@ export class TSJsonRpc {
 
   static makeMethodDecorator<TRequest, TConfigPayload>(
     requestPreprocessor: (request: TRequest) => any,
-    responsePostprocessor: (response: any, config: TConfigPayload) => any
+    responsePostprocessor: (response: any, config: TConfigPayload) => any,
+    transportFactory?: () => IHttpClient
   ): (config: IJsonRpcMethodConfig<TConfigPayload>) => any {
     return (config: IJsonRpcMethodConfig<TConfigPayload>) => {
       return (target: any, propertyKey: string | Symbol, descriptor: TypedPropertyDescriptor<any>) => {
@@ -54,9 +56,11 @@ export class TSJsonRpc {
 
         // tslint:disable-next-line
         descriptor.value = function (request: TRequest) {
+          // tslint:disable-next-line
+          const executor = transportFactory ? transportFactory().post : targetConstructor['execute'];
+
           return responsePostprocessor(
-            // tslint:disable-next-line
-            targetConstructor['execute'](config.method, requestPreprocessor(request)),
+            executor(config.method, requestPreprocessor(request)),
             config
           );
         };

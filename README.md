@@ -198,5 +198,5 @@ export const JsonRpcMethod = TSJsonRpc.makeMethodDecorator<
 ### TSJsonRpc.makeClassDecorator(config: { apiServerUrl: string, httpClient: { post(url: string, data: object): any } })
 Декоратор для класса, в котором будут удаленные методы
 
-### JsonRpcService.makeMethodDecorator<TRequest, TPayload>(requestProcessor: (request: TRequest) => any, responseProcessor(response: any, payload: TPayload) => any )
+### JsonRpcService.makeMethodDecorator<TRequest, TPayload>(requestProcessor: (request: TRequest) => any, responseProcessor(response: any, payload: TPayload) => any, transportFactory?: () => IHttpClient )
 Фабрика получения декоратора метода
