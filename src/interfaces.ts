@@ -35,21 +35,27 @@ export interface IHttpClient {
   post(url: string, params: IJsonRpcRequest): any;
 }
 
-export class JsonRpcError {
+export interface IJsonRpcErrorBody {
+  code: number;
+  message: string;
+  data?: any;
+}
+
+export class TsJsonRpcError {
   status!: number;
   statusText!: string;
-  rpcError!: object;
+  rpcError!: IJsonRpcErrorBody;
 
-  static makeHttpError(status: number, statusText: string): JsonRpcError {
-    const retVal = new JsonRpcError();
+  static makeHttpError(status: number, statusText: string): TsJsonRpcError {
+    const retVal = new TsJsonRpcError();
     retVal.status = status;
     retVal.statusText = statusText;
 
     return retVal;
   }
 
-  static makeRpcError(rpcError: any): JsonRpcError {
-    const retVal = new JsonRpcError();
+  static makeRpcError(rpcError: any): TsJsonRpcError {
+    const retVal = new TsJsonRpcError();
     retVal.rpcError = rpcError;
 
     return retVal;
