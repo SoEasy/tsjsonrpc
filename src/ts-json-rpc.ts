@@ -33,14 +33,14 @@ export class TSJsonRpc {
 
     return (endpoint?: string): any => {
       return (target: any): void => {
-        // tslint:disable-next-line
-        target['execute'] = function(method: string, data: object) {
-          const { makeUrl } = TSJsonRpc;
-          const apiUrl: string = makeUrl(apiServerUrl, endpoint);
+        target['apiUrl'] = TSJsonRpc.makeUrl(apiServerUrl, endpoint);
 
-          return httpClient.post(apiUrl, TSJsonRpc.getParamsObj(method, data));
+        target['requestBody'] = (method: string, data: object) => {
+          return TSJsonRpc.getParamsObj(method, data);
         };
-      };
+
+        target['httpClient'] = httpClient;
+      }
     }
   }
 
@@ -55,12 +55,19 @@ export class TSJsonRpc {
         const targetConstructor = typeof target === 'function' ? target : target.constructor;
 
         // tslint:disable-next-line
-        descriptor.value = function (request: TRequest) {
-          // tslint:disable-next-line
-          const executor = transportFactory ? transportFactory().post : targetConstructor['execute'];
+        descriptor.value = function(request: TRequest) {
+          const apiUrl = targetConstructor['apiUrl'] || config.method;
+
+          const requestBody = targetConstructor['requestBody'] ?
+                              targetConstructor['requestBody'](config.method, requestPreprocessor(request)) :
+                              requestPreprocessor(request);
+
+          const transport = transportFactory ? transportFactory() : targetConstructor['httpClient'];
+
+          if (!transport) throw Error('There is no http client presented');
 
           return responsePostprocessor(
-            executor(config.method, requestPreprocessor(request)),
+            transport.post(apiUrl, requestBody),
             config
           );
         };

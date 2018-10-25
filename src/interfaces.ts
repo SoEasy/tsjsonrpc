@@ -10,7 +10,7 @@ export type IJsonRpcMethodConfig<TMethodConfigPayload> = IJsonRpcMethodConfigPay
 
 export interface IJsonRpcServiceConfig {
   apiServerUrl: string;
-  httpClient: IHttpClient;
+  httpClient?: IHttpClient;
 }
 
 export interface IJsonRpcRequest {
