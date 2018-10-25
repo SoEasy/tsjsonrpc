@@ -97,7 +97,8 @@
     ],
     "no-inferrable-types": false,
     "no-any": false,
-    "no-unsafe-any": true
+    "no-unsafe-any": true,
+    "no-string-literal": false
   },
   // apply the same rules for any JS if allowJS is gonna be used
   "jsRules": true
