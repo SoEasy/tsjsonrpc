@@ -41,7 +41,7 @@ export interface IJsonRpcErrorBody {
   data?: any;
 }
 
-export class TsJsonRpcError {
+export class TsJsonRpcError extends Error {
   status!: number;
   statusText!: string;
   rpcError!: IJsonRpcErrorBody;
@@ -60,6 +60,11 @@ export class TsJsonRpcError {
 
     return retVal;
   }
+
+  toString = (): string => {
+    return JSON.stringify(this);
+
+  };
 
   get isNetworkError(): boolean {
     return !!this.status;
