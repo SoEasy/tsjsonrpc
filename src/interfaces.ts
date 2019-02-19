@@ -63,7 +63,6 @@ export class TsJsonRpcError extends Error {
 
   toString = (): string => {
     return JSON.stringify(this);
-
   };
 
   get isNetworkError(): boolean {
